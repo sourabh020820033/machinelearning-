@@ -6,72 +6,81 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
-st.title("📊 Advertising Sales Prediction (Linear Regression)")
+# Page settings
+st.set_page_config(page_title="Ad Budget Sales Predictor", layout="wide")
+st.title("📊 Advertising Sales Prediction using Linear Regression")
 
-# Upload or load default
-uploaded = st.file_uploader("Upload Advertising.csv file", type=['csv'])
-
+# Upload file
+uploaded = st.file_uploader("Upload your Advertising.csv file (optional)", type=["csv"])
 if uploaded:
     data = pd.read_csv(uploaded)
 else:
     data = pd.read_csv("Advertising.csv")
 
-data = data.drop(columns='Unnamed: 0')
+# Drop index column if present
+if 'Unnamed: 0' in data.columns:
+    data = data.drop(columns='Unnamed: 0')
 
-# Show data
+# Show dataset
 st.subheader("📁 Dataset Preview")
 st.dataframe(data.head())
 
-# Train model
+# Split features and target
 X = data[['TV', 'radio', 'newspaper']]
 y = data['sales']
+
+# Train-test split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-model = LinearRegression().fit(X_train, y_train)
+
+# Train model
+model = LinearRegression()
+model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
 
-# Error metrics
+# Metrics
 mae = mean_absolute_error(y_test, y_pred)
 mse = mean_squared_error(y_test, y_pred)
-rmse = mse ** 0.5
+rmse = np.sqrt(mse)
 r2 = r2_score(y_test, y_pred)
 
-st.subheader("📈 Model Performance")
-st.write(f"*R² Score:* {r2:.4f}")
-st.write(f"*MAE:* {mae:.2f}")
-st.write(f"*MSE:* {mse:.2f}")
-st.write(f"*RMSE:* {rmse:.2f}")
+st.subheader("📌 Model Performance Metrics")
+st.markdown(f"""
+- *R² Score:* {r2:.4f}  
+- *MAE:* {mae:.2f}  
+- *MSE:* {mse:.2f}  
+- *RMSE:* {rmse:.2f}
+""")
 
-# Plot 1: Actual vs Predicted
-st.subheader("🔍 Actual vs Predicted Sales")
+# Plot: Actual vs Predicted
+st.subheader("📈 Actual vs Predicted Sales")
 fig1, ax1 = plt.subplots()
-ax1.scatter(y_test, y_pred, color='blue', alpha=0.6)
+ax1.scatter(y_test, y_pred, alpha=0.6, color='blue')
 ax1.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--')
 ax1.set_xlabel("Actual Sales")
 ax1.set_ylabel("Predicted Sales")
 ax1.set_title("Actual vs Predicted")
 st.pyplot(fig1)
 
-# Plot 2: Residuals
+# Plot: Residuals
+st.subheader("📉 Residual Plot (Error)")
 residuals = y_test - y_pred
-st.subheader("⚠ Residual Plot")
 fig2, ax2 = plt.subplots()
 ax2.scatter(y_test, residuals, color='purple', alpha=0.6)
 ax2.axhline(0, color='red', linestyle='--')
 ax2.set_xlabel("Actual Sales")
-ax2.set_ylabel("Error")
-ax2.set_title("Residual Plot")
+ax2.set_ylabel("Residuals (Actual - Predicted)")
+ax2.set_title("Residuals")
 st.pyplot(fig2)
 
-# Plot 3: Feature vs Sales
-st.subheader("📊 Feature-wise Linear Fit")
-
+# Plot: Feature vs Sales
+st.subheader("📊 Feature-wise Best Fit Lines")
 features = ['TV', 'radio', 'newspaper']
 for col in features:
     Xi = data[[col]]
     yi = y
-    lr = LinearRegression().fit(Xi, yi)
+    single_model = LinearRegression().fit(Xi, yi)
     X_line = np.linspace(Xi.min(), Xi.max(), 100).reshape(-1, 1)
-    y_line = lr.predict(X_line)
+    y_line = single_model.predict(X_line)
 
     fig, ax = plt.subplots()
     ax.scatter(Xi, yi, alpha=0.6)
@@ -80,3 +89,16 @@ for col in features:
     ax.set_ylabel("Sales")
     ax.set_title(f"{col} vs Sales")
     st.pyplot(fig)
+
+# 🔥 Input Feature Sliders for Custom Prediction
+st.subheader("🎯 Predict Sales From Your Own Budget")
+
+tv = st.slider("TV Budget (in thousands)", 0.0, 300.0, 150.0, step=1.0)
+radio = st.slider("Radio Budget (in thousands)", 0.0, 50.0, 25.0, step=1.0)
+newspaper = st.slider("Newspaper Budget (in thousands)", 0.0, 120.0, 30.0, step=1.0)
+
+# Predict from custom input
+input_data = pd.DataFrame([[tv, radio, newspaper]], columns=['TV', 'radio', 'newspaper'])
+predicted_sales = model.predict(input_data)[0]
+
+st.success(f"📦 *Predicted Sales:* {predicted_sales:.2f} (in thousands of units)")
